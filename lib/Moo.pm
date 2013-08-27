@@ -180,7 +180,7 @@ sub _constructor_maker_for {
           $con ? (construction_string => $con->construction_string) : ()
         ) : (
           construction_builder => sub {
-            '$class->'.$target.'::SUPER::new('
+            '$class->next::method('
               .($target->can('FOREIGNBUILDARGS') ?
                 '$class->FOREIGNBUILDARGS(@_)' : '@_')
               .')'
@@ -188,6 +188,9 @@ sub _constructor_maker_for {
         ),
         subconstructor_handler => (
           '      if ($Moo::MAKERS{$class}) {'."\n"
+          .'        if ($Moo::MAKERS{$class}{constructor}) {'."\n"
+          .'          return $class->next::method(@_);'."\n"
+          .'        }'."\n"
           .'        '.$class.'->_constructor_maker_for($class,'.perlstring($target).');'."\n"
           .'        return $class->new(@_)'.";\n"
           .'      } elsif ($INC{"Moose.pm"} and my $meta = Class::MOP::get_metaclass_by_name($class)) {'."\n"
