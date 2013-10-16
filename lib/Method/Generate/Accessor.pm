@@ -212,14 +212,6 @@ sub generate_method {
   \%methods;
 }
 
-sub is_simple_attribute {
-  my ($self, $name, $spec) = @_;
-  # clearer doesn't have to be listed because it doesn't
-  # affect whether defined/exists makes a difference
-  !grep $spec->{$_},
-    qw(lazy default builder coerce isa trigger predicate weak_ref);
-}
-
 sub is_simple_get {
   my ($self, $name, $spec) = @_;
   !($spec->{lazy} and ($spec->{default} or $spec->{builder}));
@@ -265,13 +257,6 @@ sub _generate_simple_clear {
   "    delete ${me}->{${\perlstring $name}}\n"
 }
 
-sub generate_get_default {
-  my $self = shift;
-  $self->{captures} = {};
-  my $code = $self->_generate_get_default(@_);
-  ($code, delete $self->{captures});
-}
-
 sub generate_use_default {
   my $self = shift;
   $self->{captures} = {};
@@ -308,11 +293,6 @@ sub _generate_get_default {
   else {
     "${me}->${\$spec->{builder}}"
   }
-}
-
-sub generate_simple_get {
-  my ($self, @args) = @_;
-  $self->_generate_simple_get(@args);
 }
 
 sub _generate_simple_get {
@@ -356,13 +336,6 @@ sub _generate_set {
   }
 }
 
-sub generate_coerce {
-  my $self = shift;
-  $self->{captures} = {};
-  my $code = $self->_generate_coerce(@_);
-  ($code, delete $self->{captures});
-}
-
 sub _attr_desc {
   my ($name, $init_arg) = @_;
   return perlstring($name) if !defined($init_arg) or $init_arg eq $name;
@@ -379,23 +352,9 @@ sub _generate_coerce {
   );
 }
 
-sub generate_trigger {
-  my $self = shift;
-  $self->{captures} = {};
-  my $code = $self->_generate_trigger(@_);
-  ($code, delete $self->{captures});
-}
-
 sub _generate_trigger {
   my ($self, $name, $obj, $value, $trigger) = @_;
   $self->_generate_call_code($name, 'trigger', "${obj}, ${value}", $trigger);
-}
-
-sub generate_isa_check {
-  my ($self, @args) = @_;
-  $self->{captures} = {};
-  my $code = $self->_generate_isa_check(@args);
-  ($code, delete $self->{captures});
 }
 
 sub _generate_die_prefix {
