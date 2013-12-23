@@ -552,26 +552,24 @@ sub _generate_simple_set {
     require Scalar::Util;
     my $get = $self->_generate_simple_get($me, $name, $spec);
 
-    # Perl < 5.8.3 can't weaken refs to readonly vars
-    # (e.g. string constants). This *can* be solved by:
-    #
-    # &Internals::SvREADONLY($foo, 0);
-    # Scalar::Util::weaken($foo);
-    # &Internals::SvREADONLY($foo, 1);
-    #
-    # but requires Internal functions and is just too damn crazy
-    # so simply throw a better exception
+    # Perl < 5.8.3 can't weaken refs to readonly vars (e.g. string constants).
+    # To work around this, the referenced value needs to be set read-write,
+    # which can be done using perl's internal functions.
     my $weak_simple = "do { Scalar::Util::weaken(${simple}); no warnings 'void'; $get }";
     Moo::_Utils::lt_5_8_3() ? <<"EOC" : $weak_simple;
       eval { Scalar::Util::weaken($simple); 1 }
         ? do { no warnings 'void'; $get }
         : do {
           if( \$@ =~ /Modification of a read-only value attempted/) {
-            require Carp;
-            Carp::croak( sprintf (
-              'Reference to readonly value in "%s" can not be weakened on Perl < 5.8.3',
-              $name_str,
-            ) );
+            $simple;
+            Internals::SvREADONLY(\${$get}, 0);
+            if (! eval { Scalar::Util::weaken($get); 1 }) {
+              Internals::SvREADONLY(\${$get}, 1);
+              die \$@;
+            }
+            Internals::SvREADONLY(\${$get}, 1);
+            no warnings 'void';
+            $get
           } else {
             die \$@;
           }
